@@ -1,0 +1,32 @@
+{
+  "source_file": "sample_data.xlsx",
+  "export_date": "2025-07-25 13:41:01",
+  "total_records": 5,
+  "data": [
+    {
+      "Date": "2025-07-25",
+      "Title": "Project Alpha Launch",
+      "Description": "Successfully launched the new project with all features working as expected."
+    },
+    {
+      "Date": "2025-07-24",
+      "Title": "Team Meeting",
+      "Description": "Weekly team meeting to discuss progress and upcoming tasks."
+    },
+    {
+      "Date": "2025-07-23",
+      "Title": "Client Presentation",
+      "Description": "Presented the quarterly results to the client team."
+    },
+    {
+      "Date": "2025-07-22",
+      "Title": "Code Review",
+      "Description": "Completed code review for the new authentication module."
+    },
+    {
+      "Date": "2025-07-21",
+      "Title": "Documentation Update",
+      "Description": "Updated project documentation with latest API changes."
+    }
+  ]
+}
