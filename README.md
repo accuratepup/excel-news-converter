@@ -1,15 +1,17 @@
-# Excel to JSON Converter
+# Excel to News Directory Converter
 
-A Python script that reads Excel files (.xlsx) and converts table data to JSON format. The script is designed to work with tables that have columns for Date, Title, and Description.
+A Python script that reads Excel files (.xlsx) and converts table data to a structured news directory format with HTML files. The script is designed to work with tables that have columns for Date, Source, Title, Link, and Description.
 
 ## Features
 
 - Reads Excel files (.xlsx format)
-- Converts table data to structured JSON
-- Handles date formatting
-- Supports custom output file names
-- Provides detailed error messages
-- Works with any number of columns (not just Date, Title, Description)
+- Converts table data to HTML news articles
+- Creates organized directory structure with date-based file naming
+- Generates configuration files for easy navigation
+- Handles date formatting and content structuring
+- Supports metadata including source and link information
+- Provides detailed conversion summaries
+- Works with the complete 5-column structure (Date, Source, Title, Link, Description)
 
 ## Installation
 
@@ -22,61 +24,73 @@ pip install -r requirements.txt
 
 ### Basic Usage
 ```bash
-python excel_to_json.py your_file.xlsx
+python excel_to_news_directory.py your_file.xlsx output_directory
 ```
 
-### Specify Output File
+### Example
 ```bash
-python excel_to_json.py your_file.xlsx output.json
+python excel_to_news_directory.py sheets/robinhood.xlsx robinhood-news-output
 ```
 
 ### Using as a Module
 ```python
-from excel_to_json import excel_to_json
+from excel_to_news_directory import excel_to_news_directory
 
-# Convert Excel to JSON
-result = excel_to_json('your_file.xlsx', 'output.json')
+# Convert Excel to news directory
+result = excel_to_news_directory('your_file.xlsx', 'output_directory')
 ```
 
-## Example
+## Input Excel File Structure
 
-### Input Excel File Structure
-| Date       | Title              | Description                    |
-|------------|-------------------|--------------------------------|
-| 2024-01-15 | Project Launch    | Successfully launched project  |
-| 2024-01-14 | Team Meeting      | Weekly team meeting            |
+The script expects an Excel file with the following columns:
 
-### Output JSON Structure
+| Date       | Source        | Title              | Link                    | Description                    |
+|------------|---------------|-------------------|-------------------------|--------------------------------|
+| 2024-01-15 | Benzinga      | Project Launch    | https://example.com     | Successfully launched project  |
+| 2024-01-14 | Yahoo Finance | Team Meeting      | https://example2.com    | Weekly team meeting            |
+
+## Output Directory Structure
+
+```
+output_directory/
+├── 2024-01-15-01.html
+├── 2024-01-14-01.html
+├── article-config.js
+└── conversion-summary.json
+```
+
+### HTML File Structure
+Each HTML file contains:
+```html
+<h2 class="text-32 mb-4 font-700 elite-bold">[Article Title]</h2>
+<div class="article-meta">
+  <p class="source"><strong>Source:</strong> [Source Name]</p>
+  <p class="link"><strong>Link:</strong> <a href="[URL]" target="_blank">[URL]</a></p>
+</div>
+<div class="description">
+  [Article content with proper formatting]
+</div>
+```
+
+### Configuration Files
+
+**article-config.js**: Contains a list of all HTML files in chronological order
+**conversion-summary.json**: Contains conversion statistics and metadata
+
+## Example Output
+
+### Conversion Summary
 ```json
 {
-  "source_file": "your_file.xlsx",
-  "export_date": "2024-01-15 10:30:00",
-  "total_records": 2,
-  "data": [
-    {
-      "Date": "2024-01-15",
-      "Title": "Project Launch",
-      "Description": "Successfully launched project"
-    },
-    {
-      "Date": "2024-01-14",
-      "Title": "Team Meeting",
-      "Description": "Weekly team meeting"
-    }
-  ]
+  "source_file": "sheets/robinhood.xlsx",
+  "export_date": "2025-07-25 13:45:30",
+  "total_records": 2835,
+  "date_range": {
+    "start": "2024-05-13",
+    "end": "2025-07-25"
+  },
+  "files_created": 2835
 }
-```
-
-## Testing
-
-1. Create a sample Excel file:
-```bash
-python create_sample_excel.py
-```
-
-2. Convert the sample file to JSON:
-```bash
-python excel_to_json.py sample_data.xlsx
 ```
 
 ## Requirements
@@ -86,10 +100,28 @@ python excel_to_json.py sample_data.xlsx
 - openpyxl
 - xlrd
 
+## Project Structure
+
+```
+dataentryhelp/
+├── excel_to_news_directory.py    # Main conversion script
+├── requirements.txt              # Python dependencies
+├── README.md                     # This file
+├── .gitignore                    # Git ignore rules
+├── sheets/                       # Input Excel files directory
+│   └── robinhood.xlsx
+├── robinhood-news-output/        # Generated news directory
+│   ├── *.html                    # Individual news articles
+│   ├── article-config.js         # File listing
+│   └── conversion-summary.json   # Conversion statistics
+└── venv/                         # Virtual environment
+```
+
 ## Notes
 
 - The script expects the first row to contain column headers
 - Date columns are automatically formatted as YYYY-MM-DD
-- Empty cells are converted to `null` in JSON
-- The script will work with any column structure, not just Date/Title/Description
-- If the expected columns are missing, the script will show a warning but continue processing 
+- Files are named using the pattern: YYYY-MM-DD-XX.html
+- If the expected columns are missing, the script will show a warning but continue processing
+- The script creates a complete news directory structure suitable for web publishing
+- All HTML files include proper metadata and formatting 
