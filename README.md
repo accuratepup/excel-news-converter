@@ -110,6 +110,81 @@ You can easily modify the algorithm by:
 - Adjusting point values for each factor
 - Modifying the `max_articles` limit via command line
 
+## Configuration
+
+The script uses a `config.json` file to configure the algorithm parameters. This allows you to customize the news selection without modifying the Python code.
+
+### Configuration File Structure
+
+```json
+{
+  "algorithm_settings": {
+    "max_articles": 12,
+    "recency_max_days": 30,
+    "recency_max_points": 30
+  },
+  "important_sources": [
+    "Reuters", "Bloomberg", "CNBC", "Wall Street Journal", "Financial Times",
+    "Yahoo Finance", "MarketWatch", "Seeking Alpha", "Benzinga", "Investing.com"
+  ],
+  "importance_keywords": [
+    "BREAKING", "EXCLUSIVE", "UPDATE", "ALERT", "CRITICAL", "URGENT",
+    "MAJOR", "SIGNIFICANT", "IMPORTANT", "KEY", "CRUCIAL", "VITAL"
+  ],
+  "scoring_weights": {
+    "source_credibility": 20,
+    "keyword_importance": 10,
+    "content_quality": {
+      "long_description": 5,
+      "medium_description": 3,
+      "long_threshold": 200,
+      "medium_threshold": 100
+    }
+  },
+  "output_settings": {
+    "default_output_directory": "news-articles",
+    "create_summary": true,
+    "create_config_file": true
+  }
+}
+```
+
+### Configuration Parameters
+
+#### **Algorithm Settings**
+- `max_articles`: Default number of articles to extract
+- `recency_max_days`: Maximum days for recency scoring
+- `recency_max_points`: Maximum points for recency
+
+#### **Important Sources**
+- List of reputable news sources that get credibility bonus points
+- Customize this list based on your industry or preferences
+
+#### **Importance Keywords**
+- Keywords that indicate high-priority news
+- Each keyword found adds points to the article score
+- Customize for your specific domain or news type
+
+#### **Scoring Weights**
+- `source_credibility`: Points for articles from important sources
+- `keyword_importance`: Points per importance keyword found
+- `content_quality`: Points for longer, more detailed descriptions
+
+### Custom Configuration
+
+You can create multiple configuration files for different use cases:
+
+```bash
+# Use default config.json
+python excel_to_news_directory.py news.xlsx
+
+# Use custom configuration
+python excel_to_news_directory.py news.xlsx output 15 my-config.json
+
+# Use configuration for financial news
+python excel_to_news_directory.py financial.xlsx fin-output 20 financial-config.json
+```
+
 ## Installation
 
 1. Install the required dependencies:
@@ -119,7 +194,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Basic Usage (extracts 12 most important articles)
+### Basic Usage (extracts 12 most important articles using default config)
 ```bash
 python excel_to_news_directory.py your_file.xlsx output_directory
 ```
@@ -134,9 +209,14 @@ python excel_to_news_directory.py your_file.xlsx robinhood-news-output
 python excel_to_news_directory.py your_file.xlsx output_directory 20
 ```
 
+### Use Custom Configuration File
+```bash
+python excel_to_news_directory.py your_file.xlsx output_directory 15 my-config.json
+```
+
 ### Examples
 ```bash
-# Extract 12 most important articles (default)
+# Extract 12 most important articles (default config)
 python excel_to_news_directory.py sheets/robinhood.xlsx robinhood-news-output
 
 # Extract only 5 most important articles
@@ -144,17 +224,29 @@ python excel_to_news_directory.py sheets/robinhood.xlsx robinhood-news-output 5
 
 # Extract 15 most important articles
 python excel_to_news_directory.py sheets/robinhood.xlsx robinhood-news-output 15
+
+# Use custom configuration for financial news
+python excel_to_news_directory.py sheets/financial.xlsx fin-output 20 financial-config.json
+
+# Use custom configuration with default article count
+python excel_to_news_directory.py sheets/tech.xlsx tech-output config tech-config.json
 ```
 
 ### Using as a Module
 ```python
 from excel_to_news_directory import excel_to_news_directory
 
-# Convert Excel to news directory (12 articles)
+# Convert Excel to news directory (12 articles, default config)
 result = excel_to_news_directory('your_file.xlsx', 'output_directory')
 
 # Convert Excel to news directory (custom number of articles)
 result = excel_to_news_directory('your_file.xlsx', 'output_directory', max_articles=8)
+
+# Convert Excel to news directory (custom config file)
+result = excel_to_news_directory('your_file.xlsx', 'output_directory', config_file='my-config.json')
+
+# Convert Excel to news directory (custom articles and config)
+result = excel_to_news_directory('your_file.xlsx', 'output_directory', max_articles=10, config_file='custom-config.json')
 ```
 
 ## Input Excel File Structure
@@ -297,6 +389,7 @@ Created: 2025-07-24-01.html (Score: 38, Date: 2025-07-24)
 ```
 dataentryhelp/
 ├── excel_to_news_directory.py    # Main conversion script
+├── config.json                   # Algorithm configuration file
 ├── requirements.txt              # Python dependencies
 ├── README.md                     # This file
 ├── .gitignore                    # Git ignore rules

@@ -1,0 +1,48 @@
+{
+  "algorithm_settings": {
+    "max_articles": 12,
+    "recency_max_days": 30,
+    "recency_max_points": 30
+  },
+  "important_sources": [
+    "Reuters",
+    "Bloomberg", 
+    "CNBC",
+    "Wall Street Journal",
+    "Financial Times",
+    "Yahoo Finance",
+    "MarketWatch",
+    "Seeking Alpha",
+    "Benzinga",
+    "Investing.com"
+  ],
+  "importance_keywords": [
+    "BREAKING",
+    "EXCLUSIVE",
+    "UPDATE",
+    "ALERT",
+    "CRITICAL",
+    "URGENT",
+    "MAJOR",
+    "SIGNIFICANT",
+    "IMPORTANT",
+    "KEY",
+    "CRUCIAL",
+    "VITAL"
+  ],
+  "scoring_weights": {
+    "source_credibility": 20,
+    "keyword_importance": 10,
+    "content_quality": {
+      "long_description": 5,
+      "medium_description": 3,
+      "long_threshold": 200,
+      "medium_threshold": 100
+    }
+  },
+  "output_settings": {
+    "default_output_directory": "news-articles",
+    "create_summary": true,
+    "create_config_file": true
+  }
+} 

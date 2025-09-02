@@ -6,6 +6,66 @@ from datetime import datetime
 import re
 from pathlib import Path
 
+def load_config(config_file="config.json"):
+    """
+    Load configuration from JSON file.
+    
+    Args:
+        config_file (str): Path to configuration file
+    
+    Returns:
+        dict: Configuration dictionary
+    """
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        print(f"✅ Configuration loaded from {config_file}")
+        return config
+    except FileNotFoundError:
+        print(f"⚠️  Configuration file {config_file} not found. Using default settings.")
+        return get_default_config()
+    except json.JSONDecodeError as e:
+        print(f"❌ Error parsing {config_file}: {e}. Using default settings.")
+        return get_default_config()
+
+def get_default_config():
+    """
+    Get default configuration if config file is not available.
+    
+    Returns:
+        dict: Default configuration
+    """
+    return {
+        "algorithm_settings": {
+            "max_articles": 12,
+            "recency_max_days": 30,
+            "recency_max_points": 30
+        },
+        "important_sources": [
+            "Reuters", "Bloomberg", "CNBC", "Wall Street Journal", "Financial Times",
+            "Yahoo Finance", "MarketWatch", "Seeking Alpha", "Benzinga", "Investing.com"
+        ],
+        "importance_keywords": [
+            "BREAKING", "EXCLUSIVE", "UPDATE", "ALERT", "CRITICAL", "URGENT",
+            "MAJOR", "SIGNIFICANT", "IMPORTANT", "KEY", "CRUCIAL", "VITAL"
+        ],
+        "scoring_weights": {
+            "source_credibility": 20,
+            "keyword_importance": 10,
+            "content_quality": {
+                "long_description": 5,
+                "medium_description": 3,
+                "long_threshold": 200,
+                "medium_threshold": 100
+            }
+        },
+        "output_settings": {
+            "default_output_directory": "news-articles",
+            "create_summary": True,
+            "create_config_file": True
+        }
+    }
+
 def clean_filename(title, max_length=50):
     """
     Clean and format title for use as filename.
@@ -63,7 +123,7 @@ def format_date_for_filename(date_str):
     # Default to today's date if parsing fails
     return datetime.now().strftime('%Y-%m-%d')
 
-def create_html_content(title, source, link, description):
+def create_html_content(title, source, link, description, config):
     """
     Create HTML content for a news article.
     
@@ -72,6 +132,7 @@ def create_html_content(title, source, link, description):
         source (str): Article source
         link (str): Article link/URL
         description (str): Article description/content
+        config (dict): Configuration dictionary
     
     Returns:
         str: Formatted HTML content
@@ -101,11 +162,8 @@ def create_html_content(title, source, link, description):
     else:
         formatted_paragraphs = ["No description available."]
     
-    # Define important sources for special styling
-    important_sources = [
-        'Reuters', 'Bloomberg', 'CNBC', 'Wall Street Journal', 'Financial Times',
-        'Yahoo Finance', 'MarketWatch', 'Seeking Alpha', 'Benzinga', 'Investing.com'
-    ]
+    # Get important sources from config
+    important_sources = config.get("important_sources", [])
     
     # Create HTML content
     html_content = f'<h2 class="text-32 mb-4 font-700 elite-bold">{title}</h2>\n'
@@ -136,19 +194,27 @@ def create_html_content(title, source, link, description):
     
     return html_content
 
-def excel_to_news_directory(excel_file_path, output_directory="news-articles", max_articles=12):
+def excel_to_news_directory(excel_file_path, output_directory="news-articles", max_articles=None, config_file="config.json"):
     """
     Convert Excel file to news directory structure.
     
     Args:
         excel_file_path (str): Path to the Excel file
         output_directory (str): Directory to create the news structure
-        max_articles (int): Maximum number of articles to extract (default: 12)
+        max_articles (int): Maximum number of articles to extract (overrides config)
+        config_file (str): Path to configuration file
     
     Returns:
         dict: Summary of the conversion process
     """
     try:
+        # Load configuration
+        config = load_config(config_file)
+        
+        # Use provided max_articles or config value
+        if max_articles is None:
+            max_articles = config["algorithm_settings"]["max_articles"]
+        
         # Read the Excel file
         print(f"Reading Excel file: {excel_file_path}")
         df = pd.read_excel(excel_file_path)
@@ -158,6 +224,7 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
         output_path.mkdir(exist_ok=True)
         
         print(f"Creating news directory: {output_path}")
+        print(f"🎯 Algorithm configured for {max_articles} articles")
         
         # Check if required columns exist
         required_columns = ['Date', 'Source', 'Title', 'Link', 'Description']
@@ -168,17 +235,14 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
             print(f"Available columns: {list(df.columns)}")
             print("Proceeding with available columns...")
         
-        # Define important sources (higher priority)
-        important_sources = [
-            'Reuters', 'Bloomberg', 'CNBC', 'Wall Street Journal', 'Financial Times',
-            'Yahoo Finance', 'MarketWatch', 'Seeking Alpha', 'Benzinga', 'Investing.com'
-        ]
+        # Get configuration values
+        important_sources = config["important_sources"]
+        importance_keywords = config["importance_keywords"]
+        scoring_weights = config["scoring_weights"]
+        recency_settings = config["algorithm_settings"]
         
-        # Define importance keywords (higher priority)
-        importance_keywords = [
-            'BREAKING', 'EXCLUSIVE', 'UPDATE', 'ALERT', 'CRITICAL', 'URGENT',
-            'MAJOR', 'SIGNIFICANT', 'IMPORTANT', 'KEY', 'CRUCIAL', 'VITAL'
-        ]
+        print(f"📰 Important sources: {len(important_sources)} configured")
+        print(f"🔑 Importance keywords: {len(importance_keywords)} configured")
         
         # Process and score articles
         articles_data = []
@@ -223,26 +287,31 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
                 
                 # Date score (more recent = higher score)
                 days_old = (datetime.now() - parsed_date).days
-                date_score = max(0, 30 - days_old)  # Newer articles get higher scores
+                max_days = recency_settings["recency_max_days"]
+                max_points = recency_settings["recency_max_points"]
+                date_score = max(0, max_points - days_old)
                 importance_score += date_score
                 
                 # Source importance score
                 source_upper = source.upper()
                 if any(imp_source.upper() in source_upper for imp_source in important_sources):
-                    importance_score += 20
+                    importance_score += scoring_weights["source_credibility"]
                 
                 # Keyword importance score
                 title_upper = title.upper()
                 desc_upper = description.upper()
                 keyword_count = sum(1 for keyword in importance_keywords if keyword in title_upper or keyword in desc_upper)
-                importance_score += keyword_count * 10
+                importance_score += keyword_count * scoring_weights["keyword_importance"]
                 
                 # Content length score (longer descriptions might indicate more detailed/important news)
                 content_length = len(description)
-                if content_length > 200:
-                    importance_score += 5
-                elif content_length > 100:
-                    importance_score += 3
+                long_threshold = scoring_weights["content_quality"]["long_threshold"]
+                medium_threshold = scoring_weights["content_quality"]["medium_threshold"]
+                
+                if content_length > long_threshold:
+                    importance_score += scoring_weights["content_quality"]["long_description"]
+                elif content_length > medium_threshold:
+                    importance_score += scoring_weights["content_quality"]["medium_description"]
                 
                 # Store article data with score
                 articles_data.append({
@@ -284,7 +353,7 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
             filename = f"{article['formatted_date']}-{sequence_num:02d}.html"
             
             # Create HTML content
-            html_content = create_html_content(article['title'], article['source'], article['link'], article['description'])
+            html_content = create_html_content(article['title'], article['source'], article['link'], article['description'], config)
             
             # Write HTML file
             file_path = output_path / filename
@@ -320,7 +389,13 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
             },
             "files_created": file_list,
             "export_date": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "selection_criteria": "Most recent and most important news based on source credibility, keywords, and content quality"
+            "selection_criteria": "Most recent and most important news based on source credibility, keywords, and content quality",
+            "config_used": config_file,
+            "algorithm_settings": {
+                "important_sources_count": len(important_sources),
+                "importance_keywords_count": len(importance_keywords),
+                "scoring_weights": scoring_weights
+            }
         }
         
         # Save summary as JSON
@@ -333,6 +408,7 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
         print(f"📄 Configuration file: article-config.js")
         print(f"📊 Summary file: conversion-summary.json")
         print(f"🎯 Selected {len(selected_articles)} most important articles out of {len(articles_data)} total")
+        print(f"⚙️  Configuration loaded from: {config_file}")
         
         return summary
         
@@ -346,20 +422,25 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
 def main():
     """Main function to handle command line arguments."""
     if len(sys.argv) < 2:
-        print("Usage: python excel_to_news_directory.py <excel_file_path> [output_directory] [max_articles]")
+        print("Usage: python excel_to_news_directory.py <excel_file_path> [output_directory] [max_articles] [config_file]")
         print("Example: python excel_to_news_directory.py robinhood.xlsx")
         print("Example: python excel_to_news_directory.py robinhood.xlsx my-news")
         print("Example: python excel_to_news_directory.py robinhood.xlsx my-news 12")
+        print("Example: python excel_to_news_directory.py robinhood.xlsx my-news 12 custom-config.json")
         return
     
     excel_file = sys.argv[1]
     output_dir = sys.argv[2] if len(sys.argv) > 2 else "news-articles"
-    max_articles = int(sys.argv[3]) if len(sys.argv) > 3 else 12
+    max_articles = int(sys.argv[3]) if len(sys.argv) > 3 else None
+    config_file = sys.argv[4] if len(sys.argv) > 4 else "config.json"
     
-    print(f"🎯 Extracting up to {max_articles} most important and recent news articles...")
+    if max_articles:
+        print(f"🎯 Extracting up to {max_articles} most important and recent news articles...")
+    else:
+        print(f"🎯 Extracting articles based on configuration file: {config_file}")
     
     # Convert Excel to news directory
-    result = excel_to_news_directory(excel_file, output_dir, max_articles)
+    result = excel_to_news_directory(excel_file, output_dir, max_articles, config_file)
     
     if result:
         print(f"\n📈 Conversion Summary:")
@@ -369,6 +450,8 @@ def main():
         print(f"   Date range: {result['date_range']['earliest']} to {result['date_range']['latest']}")
         print(f"   Files created: {len(result['files_created'])}")
         print(f"   Selection criteria: {result['selection_criteria']}")
+        print(f"   Configuration used: {result['config_used']}")
+        print(f"   Algorithm settings: {result['algorithm_settings']['important_sources_count']} sources, {result['algorithm_settings']['importance_keywords_count']} keywords")
 
 if __name__ == "__main__":
     main() 
