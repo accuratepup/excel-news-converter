@@ -30,6 +30,86 @@ The script uses a sophisticated scoring system to select the most important arti
 
 Articles are then sorted by total score and recency, with only the top N articles selected.
 
+## Algorithm Details
+
+### Scoring System Breakdown
+
+The algorithm assigns points to each article based on multiple criteria:
+
+#### **Recency Score (0-30 points)**
+- **Today's news**: 30 points
+- **Yesterday's news**: 29 points
+- **2 days old**: 28 points
+- **...and so on until 30+ days old**: 0 points
+
+#### **Source Credibility Score (0-20 points)**
+- **Reputable sources**: +20 points
+  - Reuters, Bloomberg, CNBC, Wall Street Journal, Financial Times
+  - Yahoo Finance, MarketWatch, Seeking Alpha, Benzinga, Investing.com
+- **Other sources**: 0 points
+
+#### **Importance Keywords Score (0-100+ points)**
+- **Each keyword found**: +10 points
+- **Keywords include**: BREAKING, EXCLUSIVE, UPDATE, ALERT, CRITICAL, URGENT, MAJOR, SIGNIFICANT, IMPORTANT, KEY, CRUCIAL, VITAL
+- **Multiple keywords stack**: "BREAKING ALERT UPDATE" = +30 points
+
+#### **Content Quality Score (0-5 points)**
+- **Long descriptions (>200 chars)**: +5 points
+- **Medium descriptions (>100 chars)**: +3 points
+- **Short descriptions**: 0 points
+
+### Algorithm Logic Flow
+
+```
+1. Read all articles from Excel
+   ↓
+2. Calculate importance score for each article:
+   - Recency: 0-30 points
+   - Source credibility: 0-20 points  
+   - Keywords: 0-100+ points
+   - Content quality: 0-5 points
+   ↓
+3. Sort by total score (descending)
+   ↓
+4. If scores are equal, sort by date (descending)
+   ↓
+5. Select top N articles
+   ↓
+6. Generate HTML files for selected articles
+```
+
+### Scoring Example
+
+**Article A (High Priority):**
+- Published today (30 points)
+- From Reuters (+20 points)
+- Contains "BREAKING" (+10 points)
+- Long description (+5 points)
+- **Total: 65 points**
+
+**Article B (Lower Priority):**
+- Published yesterday (29 points)
+- From local blog (0 points)
+- No keywords (0 points)
+- Short description (0 points)
+- **Total: 29 points**
+
+### Why This Algorithm Works
+
+- **Recency bias**: Ensures fresh news gets priority
+- **Source credibility**: Trusted sources get automatic boost
+- **Keyword detection**: Catches breaking news and important updates
+- **Content quality**: Longer articles often indicate more detailed/important news
+- **Balanced approach**: Combines multiple factors for comprehensive ranking
+
+### Customization Options
+
+You can easily modify the algorithm by:
+- Changing the `important_sources` list in the code
+- Adding/removing `importance_keywords`
+- Adjusting point values for each factor
+- Modifying the `max_articles` limit via command line
+
 ## Installation
 
 1. Install the required dependencies:
@@ -101,13 +181,58 @@ Each HTML file contains:
 ```html
 <h2 class="text-32 mb-4 font-700 elite-bold">[Article Title]</h2>
 <div class="article-meta">
-  <p class="source"><strong>Source:</strong> [Source Name]</p>
+  <p class="source"><strong>Source:</strong> <span class="source-name">[Source Name]</span></p>
   <p class="link"><strong>Link:</strong> <a href="[URL]" target="_blank">[URL]</a></p>
 </div>
 <div class="description">
   [Article content with proper formatting]
 </div>
 ```
+
+### Recommended CSS Styling
+For optimal display of the source information, add these CSS styles:
+
+```css
+.article-meta {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #007bff;
+}
+
+.source, .source-important {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.source-important {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.source-name {
+  color: #007bff;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.link {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.link a {
+  color: #28a745;
+  text-decoration: none;
+}
+
+.link a:hover {
+  text-decoration: underline;
+}
+```
+
+**Important Sources**: Articles from reputable sources like Reuters, Bloomberg, CNBC are highlighted with 🔴 icon and special styling to indicate their credibility.
 
 ### Configuration Files
 

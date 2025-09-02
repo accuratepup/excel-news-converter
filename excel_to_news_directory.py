@@ -101,6 +101,12 @@ def create_html_content(title, source, link, description):
     else:
         formatted_paragraphs = ["No description available."]
     
+    # Define important sources for special styling
+    important_sources = [
+        'Reuters', 'Bloomberg', 'CNBC', 'Wall Street Journal', 'Financial Times',
+        'Yahoo Finance', 'MarketWatch', 'Seeking Alpha', 'Benzinga', 'Investing.com'
+    ]
+    
     # Create HTML content
     html_content = f'<h2 class="text-32 mb-4 font-700 elite-bold">{title}</h2>\n'
     
@@ -108,7 +114,11 @@ def create_html_content(title, source, link, description):
     if source or link:
         html_content += '<div class="article-meta">\n'
         if source:
-            html_content += f'  <p class="source"><strong>Source:</strong> {source}</p>\n'
+            # Check if this is an important source for special styling
+            is_important = any(imp_source.lower() in source.lower() for imp_source in important_sources)
+            source_class = 'source-important' if is_important else 'source'
+            source_icon = '🔴' if is_important else '📰'
+            html_content += f'  <p class="{source_class}">{source_icon} <strong>Source:</strong> <span class="source-name">{source}</span></p>\n'
         if link:
             html_content += f'  <p class="link"><strong>Link:</strong> <a href="{link}" target="_blank">{link}</a></p>\n'
         html_content += '</div>\n'
