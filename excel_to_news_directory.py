@@ -126,13 +126,14 @@ def create_html_content(title, source, link, description):
     
     return html_content
 
-def excel_to_news_directory(excel_file_path, output_directory="news-articles"):
+def excel_to_news_directory(excel_file_path, output_directory="news-articles", max_articles=12):
     """
     Convert Excel file to news directory structure.
     
     Args:
         excel_file_path (str): Path to the Excel file
         output_directory (str): Directory to create the news structure
+        max_articles (int): Maximum number of articles to extract (default: 12)
     
     Returns:
         dict: Summary of the conversion process
@@ -157,15 +158,44 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles"):
             print(f"Available columns: {list(df.columns)}")
             print("Proceeding with available columns...")
         
-        # Group articles by date
-        articles_by_date = {}
-        file_list = []
+        # Define important sources (higher priority)
+        important_sources = [
+            'Reuters', 'Bloomberg', 'CNBC', 'Wall Street Journal', 'Financial Times',
+            'Yahoo Finance', 'MarketWatch', 'Seeking Alpha', 'Benzinga', 'Investing.com'
+        ]
+        
+        # Define importance keywords (higher priority)
+        importance_keywords = [
+            'BREAKING', 'EXCLUSIVE', 'UPDATE', 'ALERT', 'CRITICAL', 'URGENT',
+            'MAJOR', 'SIGNIFICANT', 'IMPORTANT', 'KEY', 'CRUCIAL', 'VITAL'
+        ]
+        
+        # Process and score articles
+        articles_data = []
         
         for index, row in df.iterrows():
             try:
                 # Get date and format it
                 date_str = row.get('Date', '')
                 formatted_date = format_date_for_filename(date_str)
+                
+                # Parse date for sorting
+                try:
+                    if isinstance(date_str, str):
+                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']:
+                            try:
+                                parsed_date = datetime.strptime(date_str, fmt)
+                                break
+                            except ValueError:
+                                continue
+                        else:
+                            parsed_date = datetime.now()
+                    elif isinstance(date_str, datetime):
+                        parsed_date = date_str
+                    else:
+                        parsed_date = datetime.now()
+                except:
+                    parsed_date = datetime.now()
                 
                 # Get title, source, link, and description
                 title = str(row.get('Title', f'Article {index + 1}'))
@@ -178,36 +208,84 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles"):
                     print(f"Skipping row {index + 1}: Social Media Post detected in description")
                     continue
                 
-                # Clean title for filename
-                clean_title = clean_filename(title)
+                # Calculate importance score
+                importance_score = 0
                 
-                # Create filename
-                if formatted_date not in articles_by_date:
-                    articles_by_date[formatted_date] = 1
-                else:
-                    articles_by_date[formatted_date] += 1
+                # Date score (more recent = higher score)
+                days_old = (datetime.now() - parsed_date).days
+                date_score = max(0, 30 - days_old)  # Newer articles get higher scores
+                importance_score += date_score
                 
-                sequence_num = articles_by_date[formatted_date]
-                filename = f"{formatted_date}-{sequence_num:02d}.html"
+                # Source importance score
+                source_upper = source.upper()
+                if any(imp_source.upper() in source_upper for imp_source in important_sources):
+                    importance_score += 20
                 
-                # Create HTML content
-                html_content = create_html_content(title, source, link, description)
+                # Keyword importance score
+                title_upper = title.upper()
+                desc_upper = description.upper()
+                keyword_count = sum(1 for keyword in importance_keywords if keyword in title_upper or keyword in desc_upper)
+                importance_score += keyword_count * 10
                 
-                # Write HTML file
-                file_path = output_path / filename
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
+                # Content length score (longer descriptions might indicate more detailed/important news)
+                content_length = len(description)
+                if content_length > 200:
+                    importance_score += 5
+                elif content_length > 100:
+                    importance_score += 3
                 
-                file_list.append(filename)
-                print(f"Created: {filename}")
+                # Store article data with score
+                articles_data.append({
+                    'index': index,
+                    'date': parsed_date,
+                    'formatted_date': formatted_date,
+                    'title': title,
+                    'source': source,
+                    'link': link,
+                    'description': description,
+                    'importance_score': importance_score
+                })
                 
             except Exception as e:
                 print(f"Error processing row {index + 1}: {str(e)}")
                 continue
         
+        # Sort articles by importance score (descending) and then by date (descending)
+        articles_data.sort(key=lambda x: (x['importance_score'], x['date']), reverse=True)
+        
+        # Take only the top max_articles
+        selected_articles = articles_data[:max_articles]
+        
+        print(f"Selected {len(selected_articles)} articles out of {len(articles_data)} total articles")
+        print("Articles selected based on importance score and recency")
+        
+        # Group articles by date for file naming
+        articles_by_date = {}
+        file_list = []
+        
+        for article in selected_articles:
+            # Create filename
+            if article['formatted_date'] not in articles_by_date:
+                articles_by_date[article['formatted_date']] = 1
+            else:
+                articles_by_date[article['formatted_date']] += 1
+            
+            sequence_num = articles_by_date[article['formatted_date']]
+            filename = f"{article['formatted_date']}-{sequence_num:02d}.html"
+            
+            # Create HTML content
+            html_content = create_html_content(article['title'], article['source'], article['link'], article['description'])
+            
+            # Write HTML file
+            file_path = output_path / filename
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            file_list.append(filename)
+            print(f"Created: {filename} (Score: {article['importance_score']}, Date: {article['formatted_date']})")
+        
         # Create article configuration file
-        config_content = f"""// Article configuration for {Path(excel_file_path).stem}
-const articleConfigs = {{
+        config_content = f"""const articleConfigs = {{
   files: [
     {', '.join([f"'{file}'" for file in sorted(file_list, reverse=True)])}
   ]
@@ -223,13 +301,16 @@ const articleConfigs = {{
         summary = {
             "source_file": excel_file_path,
             "output_directory": str(output_path),
-            "total_articles": len(file_list),
+            "total_articles_processed": len(articles_data),
+            "articles_selected": len(selected_articles),
+            "max_articles_limit": max_articles,
             "date_range": {
                 "earliest": min(articles_by_date.keys()) if articles_by_date else None,
                 "latest": max(articles_by_date.keys()) if articles_by_date else None
             },
             "files_created": file_list,
-            "export_date": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            "export_date": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "selection_criteria": "Most recent and most important news based on source credibility, keywords, and content quality"
         }
         
         # Save summary as JSON
@@ -241,6 +322,7 @@ const articleConfigs = {{
         print(f"📁 Output directory: {output_path}")
         print(f"📄 Configuration file: article-config.js")
         print(f"📊 Summary file: conversion-summary.json")
+        print(f"🎯 Selected {len(selected_articles)} most important articles out of {len(articles_data)} total")
         
         return summary
         
@@ -254,22 +336,29 @@ const articleConfigs = {{
 def main():
     """Main function to handle command line arguments."""
     if len(sys.argv) < 2:
-        print("Usage: python excel_to_news_directory.py <excel_file_path> [output_directory]")
+        print("Usage: python excel_to_news_directory.py <excel_file_path> [output_directory] [max_articles]")
         print("Example: python excel_to_news_directory.py robinhood.xlsx")
         print("Example: python excel_to_news_directory.py robinhood.xlsx my-news")
+        print("Example: python excel_to_news_directory.py robinhood.xlsx my-news 12")
         return
     
     excel_file = sys.argv[1]
     output_dir = sys.argv[2] if len(sys.argv) > 2 else "news-articles"
+    max_articles = int(sys.argv[3]) if len(sys.argv) > 3 else 12
+    
+    print(f"🎯 Extracting up to {max_articles} most important and recent news articles...")
     
     # Convert Excel to news directory
-    result = excel_to_news_directory(excel_file, output_dir)
+    result = excel_to_news_directory(excel_file, output_dir, max_articles)
     
     if result:
         print(f"\n📈 Conversion Summary:")
-        print(f"   Total articles: {result['total_articles']}")
+        print(f"   Total articles processed: {result['total_articles_processed']}")
+        print(f"   Articles selected: {result['articles_selected']}")
+        print(f"   Max articles limit: {result['max_articles_limit']}")
         print(f"   Date range: {result['date_range']['earliest']} to {result['date_range']['latest']}")
         print(f"   Files created: {len(result['files_created'])}")
+        print(f"   Selection criteria: {result['selection_criteria']}")
 
 if __name__ == "__main__":
     main() 
