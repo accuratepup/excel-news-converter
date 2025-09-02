@@ -27,15 +27,9 @@ wheels/
 
 # Generated Data Files
 *.xlsx
-*.json
-sample_data.xlsx
-sample_data_with_source_link.xlsx
-robinhood.xlsx
 
 # Output Directories
-robinhood-news-converted/
-robinhood-news-updated/
-sample-news-with-source-link/
+sheets/
 *-news-output/
 *-news-*/
 

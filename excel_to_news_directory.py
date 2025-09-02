@@ -173,6 +173,11 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles"):
                 link = str(row.get('Link', ''))
                 description = str(row.get('Description', ''))
                 
+                # Skip rows with "Social Media Post" in description
+                if 'Social Media Post' in description:
+                    print(f"Skipping row {index + 1}: Social Media Post detected in description")
+                    continue
+                
                 # Clean title for filename
                 clean_title = clean_filename(title)
                 
