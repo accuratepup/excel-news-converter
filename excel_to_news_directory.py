@@ -101,8 +101,23 @@ def format_date_for_filename(date_str):
     try:
         # Try to parse the date
         if isinstance(date_str, str):
-            # Handle different date formats
-            for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']:
+            # Handle different date formats including month names
+            date_formats = [
+                '%Y-%m-%d',           # 2025-08-06
+                '%m/%d/%Y',           # 08/06/2025
+                '%d/%m/%Y',           # 06/08/2025
+                '%Y/%m/%d',           # 2025/08/06
+                '%B %d, %Y',          # August 06, 2025
+                '%B %d %Y',           # August 06 2025
+                '%b %d, %Y',          # Aug 06, 2025
+                '%b %d %Y',           # Aug 06 2025
+                '%d %B %Y',           # 06 August 2025
+                '%d %b %Y',           # 06 Aug 2025
+                '%Y-%m-%d %H:%M:%S', # 2025-08-06 14:30:00
+                '%m/%d/%Y %H:%M:%S', # 08/06/2025 14:30:00
+            ]
+            
+            for fmt in date_formats:
                 try:
                     parsed_date = datetime.strptime(date_str, fmt)
                     return parsed_date.strftime('%Y-%m-%d')
@@ -256,7 +271,23 @@ def excel_to_news_directory(excel_file_path, output_directory="news-articles", m
                 # Parse date for sorting
                 try:
                     if isinstance(date_str, str):
-                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']:
+                        # Use the same date formats as format_date_for_filename
+                        date_formats = [
+                            '%Y-%m-%d',           # 2025-08-06
+                            '%m/%d/%Y',           # 08/06/2025
+                            '%d/%m/%Y',           # 06/08/2025
+                            '%Y/%m/%d',           # 2025/08/06
+                            '%B %d, %Y',          # August 06, 2025
+                            '%B %d %Y',           # August 06 2025
+                            '%b %d, %Y',          # Aug 06, 2025
+                            '%b %d %Y',           # Aug 06 2025
+                            '%d %B %Y',           # 06 August 2025
+                            '%d %b %Y',           # 06 Aug 2025
+                            '%Y-%m-%d %H:%M:%S', # 2025-08-06 14:30:00
+                            '%m/%d/%Y %H:%M:%S', # 08/06/2025 14:30:00
+                        ]
+                        
+                        for fmt in date_formats:
                             try:
                                 parsed_date = datetime.strptime(date_str, fmt)
                                 break
